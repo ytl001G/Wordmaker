@@ -1,5 +1,6 @@
 import random
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 
 @dataclass
 class Phoneme:
@@ -28,42 +29,15 @@ class Phoneme:
     def __repr__(self):
         return f"Phoneme('{self.value}')"
 
-@dataclass
-class Consonant(Phoneme):
-    voiced: bool = field(default=None)
-    type = "consonant"
-
-class Vowel(Phoneme):
-    type = "vowel"
-
-class Glide(Phoneme):
-    type = "glide"
-
-consonants: Consonant = [
-]
-
-vowels = [
-    Vowel("a"),
-    Vowel("e"),
-    Vowel("i"),
-    Vowel("o"),
-    Vowel("u"),
-]
-
-glides = [
-    Glide("j"),
-    Glide("w")
-]
+# {C:[], V:[] ...}
+characters = {}
 
 prefix: list[str] = []
 suffix: list[str] = []
 
-lengths = ["short", "medium", "long"]
-length_distributions = {
-    "short": {1: 0.1, 2: 0.7, 3: 0.2},
-    "medium": {4: 0.4, 5: 0.4, 6: 0.2},
-    "long": {7: 0.5, 8: 0.3, 9: 0.2}
-}
+syllables: list[str] = []
+
+length: list[int] = []
 
 def interpret_rules(rules: str):
     for line in rules.splitlines():
@@ -72,33 +46,38 @@ def interpret_rules(rules: str):
 
         if line.startswith("start"):
             prefix.append(line.split()[1])
+            continue
 
         if line.startswith("end"):
             suffix.append(line.split()[1])
+            continue
 
+        if line.startswith("syllable"):
+            syllables.extend(line.split()[1:])
+            continue
 
-def pick_length(category):
-    """범주 이름을 받아서 해당 길이 분포에서 길이를 하나 선택"""
-    distrib = length_distributions[category]
-    items = list(distrib.keys())
-    weights = list(distrib.values())
-    return random.choices(items, weights=weights, k=1)[0]
+        if line.startswith("length"):
+            global length
+            length = list(map(int, re.findall(r'\d+', line)))
+
+        if re.match(r'^[A-Za-z]+\s=', line):
+            lable = re.match(r'^[A-Za-z]+', line).group()
+            right = line.split("=", 1)[1].strip()
+            labled_characters = right.split()
+            characters[lable] = labled_characters
+            continue
 
 def pick_syllable(syllable):
     return_syllable = ""
     for char in syllable:
-        if char == 'C':
-            return_syllable += random.choice(consonants)
-        if char == "V":
-            return_syllable += random.choice(vowels)
-        if char == "G":
-            return_syllable += random.choice(glides)
+        return_syllable += random.choice(characters[char])
     
     return return_syllable
 
-def make_word(syllables, length):
+def make_word():
     return_word = ""
-    for _ in range(length):
+    word_length = random.randint(length[0], length[1])
+    for _ in range(word_length):
         syllable_type = random.choice(syllables)
         return_word += pick_syllable(syllable_type)
 
